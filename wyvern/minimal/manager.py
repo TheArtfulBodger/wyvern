@@ -35,6 +35,11 @@ class MinimalManager(Manager):
 
     def do_jobs(self: "MinimalManager") -> None:
         """Run the jobs in a background thread, outputting a progress bar."""
+        logging.info(
+            "Starting to process jobs. There are %d jobs in the queue.",
+            self.job_queue.qsize(),
+        )
+
         with ThreadPoolExecutor(max_workers=1) as executor:
             while not self.job_queue.empty():
                 job = self.job_queue.get()

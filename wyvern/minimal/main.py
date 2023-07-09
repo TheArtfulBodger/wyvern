@@ -36,7 +36,7 @@ def run_main(args: Namespace) -> None:
     :param args: The Parsed Arguments
     """
     coloredlogs.install(
-        level="DEBUG",
+        level="INFO",
         fmt="[%(asctime)s] %(levelname)s - %(message)s",
     )
 
@@ -68,11 +68,13 @@ def run_main(args: Namespace) -> None:
     manager = MinimalManager(creator.plugin_id)
 
     if isinstance(creator, Factory):
+        logging.info("Loading jobs from %s", class_name)
         creator.load_jobs(manager)
     elif isinstance(creator, Artisan):
         if args.job_str is None:
             logging.error("Job string cannot be none for an artisan.")
             return
+        logging.info("Loading job from %s", class_name)
         manager.add_job(creator.request_job(manager, args.job_str))
     else:
         logging.exception("%s is not an Artisan or a Factory", class_name)
