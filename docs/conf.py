@@ -11,13 +11,16 @@ import sys
 from sphinx_pyproject import SphinxConfig
 
 config = SphinxConfig("../pyproject.toml", globalns=globals())
+html_short_title = f"{name} Documentation".title()  # noqa: F821
 
 sys.path.insert(0, os.path.relpath(".."))
 extensions = [
     "sphinx.ext.autodoc",  # Core library for html generation from docstrings
     "sphinx.ext.autosummary",  # Create neat summary tables
+    "sphinx.ext.todo",  # Format TODOs in docstrings
 ]
 autosummary_generate = True
+todo_include_todos = True
 
 
 templates_path = ["_templates"]

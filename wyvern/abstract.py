@@ -2,11 +2,11 @@
 
 Contains the abstract classes used by the project.
 
-* :class:`~wyvern.abstract.DataStore`
-* :class:`~wyvern.abstract.Artisan`
-* :class:`~wyvern.abstract.Factory`
-* :class:`~wyvern.abstract.Job`
-* :class:`~wyvern.abstract.Manager`
+* :class:`~DataStore`
+* :class:`~Artisan`
+* :class:`~Factory`
+* :class:`~Job`
+* :class:`~Manager`
 """
 from abc import ABC, abstractmethod
 
@@ -45,22 +45,39 @@ class Job(ABC):
     url: str | None
     """URL of the job."""
 
-    status: str
-    """Status during the Download (eg Downloading, Extracting etc)"""
-
-    progress: float
-    """The progress through the download.
-
-    Valid values are between 0 and 1
+    status: str | Exception
     """
+    Status during the Download (eg Downloading, Extracting etc), or if the job
+    failed, the exception it raised.
+    """
+
+    progress: float = 0.0
+    """The progress through the download. Valid values are between 0 and 1"""
+
+    @abstractmethod
+    def do_download(self: "Job", manager: "Manager") -> None:
+        """
+        Run the download.
+
+        This function will execute the download of the job, updating
+        :attr:`status` and :attr:`progress` as appropriate.
+        """
+
+    @abstractmethod
+    def should_skip(self: "Job", manager: "Manager") -> bool:
+        """
+        Work out if the job should be skipped.
+
+        This should check if the file already exists in the destination folder.
+        """
 
 
 class Manager(ABC):
     """Manager Class.
 
     The :attr:`configuration` and :attr:`secrets` variables are specific to the
-    :class:`~wyvern.abstract.factory.Factory` or
-    :class:`~wyvern.abstract.artisan.Artisan` which created the job.
+    :class:`~Factory` or
+    :class:`~Artisan` which created the job.
     """
 
     configuration: DataStore
@@ -83,6 +100,9 @@ class Manager(ABC):
     * Cookie Values
     """
 
+    plugin_id: str
+    """The calling Artisan or Factory's :attr:`~Factory.plugin_id`"""
+
     @abstractmethod
     def add_job(self: "Manager", job: Job) -> None:
         """Add a Job object to the queue."""
@@ -93,6 +113,15 @@ class Artisan(ABC):
 
     This class creates a singular job based off of a request (eg
     downloading a specific video from a site)
+    """
+
+    plugin_id: str
+    """
+    ID of the plugin to use
+
+    Should be in kebab-case. Will be the name of the folder files are output
+    into. The name may be shared with Artisans, but should only be shared with
+    one :class:`~Factory`.
     """
 
     @abstractmethod
@@ -107,13 +136,21 @@ class Factory(ABC):
     products on a site)
     """
 
+    plugin_id: str
+    """
+    ID of the plugin to use
+
+    Should be in kebab-case. Will be the name of the folder files are output
+    into. The name should be unique per-Factory, but may be shared with one
+    (or more) :class:`~Artisan`.
+    """
+
     @abstractmethod
-    def load_jobs(self: "Manager", manager: Manager) -> None:
+    def load_jobs(self: "Factory", manager: Manager) -> None:
         """Load the jobs.
 
         This is the main function of the downloader. It loads in jobs from the
-        source and adds them to the queue with
-        :func:`~wyvern.artisan.manager.Manager.add_job`. These
+        source and adds them to the queue with :func:`~Manager.add_job`. These
         jobs can be jobs to load in more jobs, but this practice should be
         avoided if at all possible. Adding jobs should be designed in such a
         way that a job can be starting to be downloaded while later jobs are
