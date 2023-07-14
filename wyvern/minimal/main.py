@@ -7,6 +7,7 @@ from argparse import ArgumentParser, Namespace
 import coloredlogs
 
 from wyvern.abstract import Artisan, Factory
+from wyvern.data_store import YamlDataStore
 from wyvern.minimal.manager import MinimalManager
 
 
@@ -65,7 +66,7 @@ def run_main(args: Namespace) -> None:
         )
         return
 
-    manager = MinimalManager(creator.plugin_id)
+    manager = MinimalManager(creator.plugin_id, YamlDataStore)
 
     if isinstance(creator, Factory):
         logging.info("Loading jobs from %s", class_name)

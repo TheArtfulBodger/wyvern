@@ -14,6 +14,10 @@ from abc import ABC, abstractmethod
 class DataStore(ABC):
     """Data Store Class.
 
+    :param plugin_id: The ID of the Factory or Artisan providing jobs.
+    :param config_str: The configuration string (meaning defined by
+        inheriting constructor.)
+
     This class is mainly for type hinting with the following defined.
 
     * :func:`__getitem__` Get the stored value.
@@ -25,11 +29,26 @@ class DataStore(ABC):
     """
 
     @abstractmethod
-    def __getitem__(self: "DataStore", key: str) -> str:
+    def __init__(
+        self: "DataStore",
+        plugin_id: str,
+        config_str: str,
+    ) -> "DataStore":
+        """Create the object."""
+
+    @abstractmethod
+    def __getitem__(
+        self: "DataStore",
+        key: str,
+    ) -> str:
         """Get the stored value."""
 
     @abstractmethod
-    def __setitem__(self: "DataStore", key: str, value: str) -> None:
+    def __setitem__(
+        self: "DataStore",
+        key: str,
+        value: str,
+    ) -> None:
         """Store the value."""
 
 

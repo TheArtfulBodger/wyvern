@@ -19,15 +19,19 @@ class YamlDataStore(DataStore):
     Used for storing data in a yaml file.
     """
 
-    def __init__(self: "YamlDataStore", plugin_id: str, file: Path) -> None:
+    def __init__(
+        self: "YamlDataStore",
+        plugin_id: str,
+        config_str: str,
+    ) -> None:
         """
         Create a YamlDataStore.
 
         :param plugin_id: The plugin for the data store.
-        :param file: The Path to the YAML file.
+        :param config_str: The Path to the YAML file.
         """
         self.plugin_id = plugin_id
-        self.file = file
+        self.file = Path(config_str)
 
     def __getitem__(self: "YamlDataStore", key: str) -> str:
         """Get the stored value."""

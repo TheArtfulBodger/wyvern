@@ -7,7 +7,7 @@ from time import sleep
 
 from alive_progress import alive_bar
 
-from wyvern.abstract import Job, Manager
+from wyvern.abstract import DataStore, Job, Manager
 
 
 class MinimalManager(Manager):
@@ -20,7 +20,11 @@ class MinimalManager(Manager):
     the status.
     """
 
-    def __init__(self: "MinimalManager", plugin_id: str) -> "MinimalManager":
+    def __init__(
+        self: "MinimalManager",
+        plugin_id: str,
+        constructor: type[DataStore],
+    ) -> "MinimalManager":
         """
         Create the object.
 
@@ -28,6 +32,8 @@ class MinimalManager(Manager):
         """
         self.plugin_id = plugin_id
         self.job_queue = queue.Queue()
+        self.configuration = constructor(plugin_id, "configuration.yaml")
+        self.secrets = constructor(plugin_id, "secrets.yaml")
 
     def add_job(self: "MinimalManager", job: Job) -> None:
         """Add a job to the end of the queue."""
@@ -43,6 +49,9 @@ class MinimalManager(Manager):
         with ThreadPoolExecutor(max_workers=1) as executor:
             while not self.job_queue.empty():
                 job = self.job_queue.get()
+                if job.should_skip(self):
+                    logging.info("Skipping: %s", job.name)
+                    continue
                 logging.info("Downloading: %s", job.name)
                 with alive_bar(manual=True, spinner="twirls") as bar:
                     fut = executor.submit(job.do_download, self)
