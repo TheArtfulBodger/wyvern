@@ -1,9 +1,9 @@
 """Minimal Manager Class."""
 
 import logging
-import queue
 from concurrent.futures import ThreadPoolExecutor
-from time import sleep
+from itertools import count
+from queue import PriorityQueue
 
 from alive_progress import alive_bar
 
@@ -31,13 +31,15 @@ class MinimalManager(Manager):
         :param plugin_id: The ID of the Factory or Artisan providing jobs.
         """
         self.plugin_id = plugin_id
-        self.job_queue = queue.Queue()
+        self.job_queue: PriorityQueue[(int, int, Job)] = PriorityQueue()
         self.configuration = constructor(plugin_id, "configuration.yaml")
         self.secrets = constructor(plugin_id, "secrets.yaml")
+        self.unique = count()
 
-    def add_job(self: "MinimalManager", job: Job) -> None:
+    def add_job(self: "MinimalManager", job: Job | None) -> None:
         """Add a job to the end of the queue."""
-        self.job_queue.put(job)
+        if Job:
+            self.job_queue.put((0, next(self.unique), job))
 
     def do_jobs(self: "MinimalManager") -> None:
         """Run the jobs in a background thread, outputting a progress bar."""
@@ -48,14 +50,48 @@ class MinimalManager(Manager):
 
         with ThreadPoolExecutor(max_workers=1) as executor:
             while not self.job_queue.empty():
-                job = self.job_queue.get()
+                priority, _, job = self.job_queue.get()
                 if job.should_skip(self):
                     logging.info("Skipping: %s", job.name)
                     continue
-                logging.info("Downloading: %s", job.name)
-                with alive_bar(manual=True, spinner="twirls") as bar:
-                    fut = executor.submit(job.do_download, self)
-                    while not fut.done():
-                        bar(job.progress)
-                        sleep(0.25)
-                    bar(1.0)
+                self._process_job(job, priority, executor)
+
+    def _process_job(
+        self: "MinimalManager",
+        job: Job,
+        priority: int,
+        executor: ThreadPoolExecutor,
+    ) -> None:
+        def do_job() -> None:
+            job.do_download(self)
+            job.updated.set()
+
+        logging.info("Downloading: %s", job.name)
+        with alive_bar(
+            manual=True,
+            dual_line=True,
+            title_length=40,
+        ) as bar:
+            fut = executor.submit(do_job)
+            while not fut.done():
+                job.updated.wait()
+                job.updated.clear()
+
+                # Update Statuses
+                bar(job.progress)
+                bar.text = getattr(job, "status", "")
+                bar.title = job.name
+                self._add_subjobs(job, priority)
+
+            if fut.exception() is not None:
+                logging.exception(fut.exception())
+
+    def _add_subjobs(self: "MinimalManager", job: Job, priority: int) -> None:
+        while getattr(job, "sub_jobs", None) and not job.sub_jobs.empty():
+            self.job_queue.put(
+                (
+                    priority - 1,
+                    next(self.unique),
+                    job.sub_jobs.get(),
+                ),
+            )

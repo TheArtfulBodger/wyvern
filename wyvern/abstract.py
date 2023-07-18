@@ -9,6 +9,8 @@ Contains the abstract classes used by the project.
 * :class:`~Manager`
 """
 from abc import ABC, abstractmethod
+from queue import Queue
+from threading import Event
 
 
 class DataStore(ABC):
@@ -70,6 +72,18 @@ class Job(ABC):
     failed, the exception it raised.
     """
 
+    updated: Event = Event()
+    """Event to be called when the externally visible members are updated."""
+
+    sub_jobs: Queue["Job"] | None
+    """
+    Sub Jobs Created as part of the job processing.
+
+    Jobs may be added to the queue before the current job has completed. Care
+    should be taken to avoid race conditions on secrets or filesand depth-first
+    themed non-terminations.
+    """
+
     progress: float = 0.0
     """The progress through the download. Valid values are between 0 and 1"""
 
@@ -123,8 +137,12 @@ class Manager(ABC):
     """The calling Artisan or Factory's :attr:`~Factory.plugin_id`"""
 
     @abstractmethod
-    def add_job(self: "Manager", job: Job) -> None:
-        """Add a Job object to the queue."""
+    def add_job(self: "Manager", job: Job | None) -> None:
+        """
+        Add a job object to the queue.
+
+        This will add to the queue of jobs to be executed directly after this.
+        """
 
 
 class Artisan(ABC):
@@ -144,8 +162,16 @@ class Artisan(ABC):
     """
 
     @abstractmethod
-    def request_job(self: "Artisan", manager: Manager, job_str: str) -> Job:
-        """Request a Job from the job_str (often a URL or an ID)."""
+    def request_job(
+        self: "Artisan",
+        manager: Manager,
+        job_str: str,
+    ) -> Job | None:
+        """
+        Request a Job from the job_str (often a URL or an ID).
+
+        If the job cannot be found, return None.
+        """
 
 
 class Factory(ABC):

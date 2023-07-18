@@ -67,6 +67,19 @@ class YtdlpJob(Job):
         except (KeyError, ZeroDivisionError, TypeError):
             self.progress = 0
 
+        verb = data["status"].title()
+        if data["info_dict"]["protocol"] != "https":
+            thing = data["info_dict"]["protocol"].replace("_", " ").title()
+        else:
+            thing = data["info_dict"]["ext"].upper()
+        if "name" in data["info_dict"]:
+            name = data["info_dict"]["name"]
+        else:
+            name = data["filename"]
+        self.status = f"{verb} {thing}: {name}"
+
+        self.updated.set()
+
 
 class YtdlpArtisan(Artisan):
     """

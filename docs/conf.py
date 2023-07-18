@@ -18,6 +18,7 @@ extensions = [
     "sphinx.ext.autodoc",  # Core library for html generation from docstrings
     "sphinx.ext.autosummary",  # Create neat summary tables
     "sphinx.ext.todo",  # Format TODOs in docstrings
+    "sphinx.ext.autosectionlabel",  # Give sections links
 ]
 autosummary_generate = True
 todo_include_todos = True
